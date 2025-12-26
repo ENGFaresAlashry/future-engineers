@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Future Engineers | Spring-Mass Simulation</title>
+
+<!-- GlowScript VPython -->
+<script src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
+<script src="https://www.glowscript.org/lib/RSrun.3.2.min.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        background: radial-gradient(circle at top, #0f2027, #000);
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    header {
+        text-align: center;
+        padding: 20px;
+        font-size: 2.2em;
+        letter-spacing: 2px;
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: bold;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #9adfff;
+        margin-bottom: 15px;
+    }
+
+    .controls {
+        text-align: center;
+        margin: 10px;
+    }
+
+    button {
+        background: #00c6ff;
+        border: none;
+        padding: 10px 25px;
+        margin: 5px;
+        font-size: 16px;
+        color: black;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    button:hover {
+        background: #66e0ff;
+    }
+
+    #glowscript {
+        width: 100%;
+        height: 85vh;
+    }
+</style>
+</head>
+
+<body>
+
+<header>FUTURE ENGINEERS</header>
+<div class="subtitle">Spring–Mass Oscillation | Interactive Physics Lab</div>
+
+<div class="controls">
+    <button onclick="startSim()">Start</button>
+    <button onclick="stopSim()">Stop</button>
+</div>
+
+<div id="glowscript"></div>
+
+<script type="text/javascript">
+"use strict";
+
+let running = false;
+
+function startSim() { running = true; }
+function stopSim() { running = false; }
+
+RSrun(function () {
+
+
+    let scene = canvas({
+        width: window.innerWidth,
+        height: window.innerHeight * 0.75,
+        background: color.black,
+        center: vec(0,0.1,0)
+    });
+
+
+    const g = 9.8;
+    const m = 0.10;
+    const k = 8;
+    const L0 = 0.20;
+    const L = 0.10;
+    const dt = 0.001;
+
+    let x_eq = (m * g) / k;
+    let y = (L0 - L) - x_eq;
+    let v = 0;
+    let t = 0;
+
+    let E_max = 0.5 * k * y * y;
+
+
+    let floor = box({
+        pos: vec(0,0,0),
+        size: vec(0.4,0.02,0.4),
+        color: color.green
+    });
+
+    let block = box({
+        pos: vec(0,L,0),
+        size: vec(0.05,0.05,0.05),
+        color: color.orange
+    });
+
+    let spring = helix({
+        pos: floor.pos,
+        axis: block.pos.sub(floor.pos),
+        radius: 0.02,
+        coils: 15,
+        thickness: 0.005
+    });
+
+ 
+    let pos_graph = graph({
+        title: "Position vs Time",
+        xtitle: "Time (s)",
+        ytitle: "Displacement (m)"
+    });
+    let pos_curve = gcurve({color: color.blue});
+    let pos_high = gcurve({color: color.cyan, width: 4});
+
+    let vel_graph = graph({
+        title: "Velocity vs Time",
+        xtitle: "Time (s)",
+        ytitle: "Velocity (m/s)"
+    });
+    let vel_curve = gcurve({color: color.red});
+    let vel_high = gcurve({color: color.orange, width: 4});
+
+    let energy_graph = graph({
+        title: "Energy vs Time",
+        xtitle: "Time (s)",
+        ytitle: "Energy (J)"
+    });
+    let energy_curve = gcurve({color: color.green});
+    let energy_high = gcurve({color: color.yellow, width: 4});
+
+ 
+    while (true) {
+        rate(1000);
+
+        if (running) {
+            let F = -k * y;
+            let a = F / m;
+
+            v += a * dt;
+            y += v * dt;
+
+            block.pos.y = L0 - (y + x_eq);
+            spring.axis = block.pos.sub(floor.pos);
+
+            let KE = 0.5 * m * v * v;
+            let PE = 0.5 * k * y * y;
+            let E = KE + PE;
+
+            pos_curve.plot(t, y);
+            vel_curve.plot(t, v);
+            energy_curve.plot(t, E);
+
+            if (y > 0) pos_high.plot(t, y);
+            if (v > 0) vel_high.plot(t, v);
+            if (E > 0.95 * E_max) energy_high.plot(t, E);
+
+            t += dt;
+        }
+    }
+});
+</script>
+
+</body>
+</html>
+
