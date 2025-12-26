@@ -2,72 +2,78 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Future Engineers | Spring–Mass Simulation</title>
+<title>Future Engineers | Spring–Mass Oscillation</title>
 
 <style>
+:root {
+  --cyan: #00e5ff;
+  --red: #ff3b3b;
+  --green: #00ff88;
+}
+
 body {
   margin: 0;
-  background: linear-gradient(135deg, #050505, #111);
-  color: #e0f7ff;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at top, #0a1a2a, #000 60%);
+  color: #e6faff;
 }
 
 header {
-  padding: 30px;
   text-align: center;
+  padding: 40px 20px;
 }
 
 header h1 {
   margin: 0;
-  color: #00d4ff;
-  letter-spacing: 2px;
+  font-size: 42px;
+  letter-spacing: 3px;
+  color: var(--cyan);
 }
 
 header p {
-  color: #aaa;
-  margin-top: 10px;
+  opacity: 0.7;
 }
 
 .controls {
   text-align: center;
-  margin-bottom: 20px;
-}
-
-button {
-  background: linear-gradient(135deg, #00d4ff, #00aacc);
-  color: #000;
-  border: none;
-  padding: 12px 30px;
-  margin: 10px;
-  font-size: 16px;
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button:hover {
-  transform: scale(1.05);
-}
-
-.section {
-  max-width: 900px;
-  margin: auto;
-  background: rgba(255,255,255,0.04);
-  padding: 20px;
-  border-radius: 15px;
   margin-bottom: 30px;
 }
 
-.section h2 {
-  color: #00d4ff;
-  margin-bottom: 10px;
+button {
+  background: linear-gradient(135deg, var(--cyan), #008cff);
+  border: none;
+  color: #000;
+  padding: 14px 34px;
+  margin: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 30px;
+  cursor: pointer;
+}
+
+button:hover { transform: scale(1.05); }
+
+.panel {
+  max-width: 1000px;
+  margin: 25px auto;
+  padding: 25px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 40px rgba(0,229,255,0.08);
+}
+
+.panel h2 {
+  margin-top: 0;
+  color: var(--cyan);
 }
 
 canvas {
   display: block;
-  margin: 15px auto;
-  background: #0b0b0b;
-  border-radius: 10px;
+  margin: 20px auto;
+  background: #050505;
+  border-radius: 14px;
 }
 </style>
 </head>
@@ -76,171 +82,174 @@ canvas {
 
 <header>
   <h1>FUTURE ENGINEERS</h1>
-  <p>Spring–Mass Oscillation | Interactive Physics Laboratory</p>
+  <p>Spring–Mass Oscillation • Physics Simulation</p>
 </header>
 
 <div class="controls">
-  <button onclick="startSim()">Start</button>
-  <button onclick="stopSim()">Stop</button>
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
 </div>
 
-<div class="section">
+<div class="panel">
   <h2>Physical System</h2>
-  <canvas id="simCanvas" width="700" height="350"></canvas>
+  <canvas id="sim" width="800" height="350"></canvas>
 </div>
 
-<div class="section">
+<div class="panel">
   <h2>Graphs</h2>
-  <canvas id="posCanvas" width="700" height="180"></canvas>
-  <canvas id="velCanvas" width="700" height="180"></canvas>
-  <canvas id="engCanvas" width="700" height="180"></canvas>
+  <canvas id="pos" width="800" height="200"></canvas>
+  <canvas id="vel" width="800" height="200"></canvas>
+  <canvas id="eng" width="800" height="200"></canvas>
 </div>
 
 <script>
-/* =======================
-   CANVAS CONTEXTS
-======================= */
-const sim = simCanvas.getContext("2d");
-const posG = posCanvas.getContext("2d");
-const velG = velCanvas.getContext("2d");
-const engG = engCanvas.getContext("2d");
+/* =====================
+   CONTEXTS
+===================== */
+const sim = document.getElementById("sim").getContext("2d");
+const posG = document.getElementById("pos").getContext("2d");
+const velG = document.getElementById("vel").getContext("2d");
+const engG = document.getElementById("eng").getContext("2d");
 
-/* =======================
-   PHYSICAL CONSTANTS
-======================= */
-const m = 0.06;      // kg
-const k = 8;         // N/m
-const g = 9.8;       // m/s^2
-const L0 = 0.20;     // m (relaxed length)
-const Linit = 0.10;  // m (initial compressed length)
+/* =====================
+   CONSTANTS (LAB)
+===================== */
+const m = 0.06;
+const k = 8;
+const g = 9.8;
+const L0 = 0.20;
+const Linit = 0.10;
 
-const pxPerMeter = 400;  // visual scale
-const dt = 0.01;         // time step (s)
+const dt = 0.01;
+const pxPerM = 350;
 
-/* =======================
-   INITIAL STATE
-======================= */
-let running = false;
-let t = 0;
-
-// displacement from equilibrium (meters)
-let y = Linit - L0 + (m * g) / k;
+/* =====================
+   STATE
+===================== */
+let y = Linit - L0 + (m*g)/k;
 let v = 0;
+let running = false;
 
-const ceilingY = 40;
+let posData=[], velData=[], engData=[];
 
-let posData = [], velData = [], engData = [];
-
-/* =======================
-   AXES
-======================= */
-function drawAxes(ctx, labelY) {
-  ctx.strokeStyle = "#555";
-  ctx.lineWidth = 1;
+/* =====================
+   AXES WITH NUMBERS
+===================== */
+function axes(ctx, yLabel, yMax) {
+  ctx.strokeStyle="#555";
+  ctx.fillStyle="#aaa";
+  ctx.lineWidth=1;
 
   ctx.beginPath();
-  ctx.moveTo(40, 10);
-  ctx.lineTo(40, 160);
-  ctx.lineTo(690, 160);
+  ctx.moveTo(60,10);
+  ctx.lineTo(60,180);
+  ctx.lineTo(780,180);
   ctx.stroke();
 
-  ctx.fillStyle = "#aaa";
-  ctx.fillText(labelY, 10, 20);
-  ctx.fillText("Time (s) →", 600, 175);
+  for(let i=0;i<=4;i++){
+    let y=180-i*40;
+    let val=(yMax*i/4).toFixed(2);
+    ctx.fillText(val,5,y+4);
+    ctx.beginPath();
+    ctx.moveTo(55,y);
+    ctx.lineTo(60,y);
+    ctx.stroke();
+  }
+
+  ctx.fillText(yLabel,5,12);
+  ctx.fillText("Time (s)",720,195);
 }
 
-/* =======================
+/* =====================
    GRAPH DRAW
-======================= */
-function drawGraph(ctx, data, color, label, scale) {
-  ctx.clearRect(0, 0, 700, 180);
-  drawAxes(ctx, label);
+===================== */
+function graph(ctx,data,color,yMax){
+  ctx.clearRect(0,0,800,200);
+  axes(ctx,"",yMax);
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle=color;
+  ctx.shadowColor=color;
+  ctx.shadowBlur=10;
+  ctx.lineWidth=2;
+
   ctx.beginPath();
-
-  data.forEach((val, i) => {
-    let x = 40 + i * 3;
-    let y = 160 - val * scale;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  data.forEach((v,i)=>{
+    let x=60+i*4;
+    let y=180-(v/yMax)*160;
+    if(i===0) ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
   });
-
   ctx.stroke();
+  ctx.shadowBlur=0;
 }
 
-/* =======================
-   SPRING–MASS DRAW
-======================= */
-function drawSystem() {
-  sim.clearRect(0, 0, 700, 350);
+/* =====================
+   SYSTEM DRAW
+===================== */
+function drawSystem(){
+  sim.clearRect(0,0,800,350);
 
-  const blockY = ceilingY + (L0 + y) * pxPerMeter;
+  const top=40;
+  const blockY=top+(L0+y)*pxPerM;
 
-  sim.fillStyle = "#fff";
-  sim.fillRect(320, ceilingY - 10, 60, 10);
-
-  sim.strokeStyle = "yellow";
-  sim.lineWidth = 3;
+  sim.strokeStyle="white";
   sim.beginPath();
-  sim.moveTo(350, ceilingY);
-  sim.lineTo(350, blockY);
+  sim.moveTo(400,top-10);
+  sim.lineTo(400,top);
   sim.stroke();
 
-  sim.fillStyle = "red";
+  sim.strokeStyle="var(--cyan)";
+  sim.lineWidth=4;
   sim.beginPath();
-  sim.arc(350, blockY + 20, 20, 0, Math.PI * 2);
+  sim.moveTo(400,top);
+  sim.lineTo(400,blockY);
+  sim.stroke();
+
+  sim.fillStyle="#ff5555";
+  sim.beginPath();
+  sim.arc(400,blockY+25,25,0,Math.PI*2);
   sim.fill();
 }
 
-/* =======================
-   SIMULATION LOOP
-======================= */
-function update() {
-  if (!running) return;
+/* =====================
+   LOOP
+===================== */
+function update(){
+  if(!running) return;
 
-  const a = -(k / m) * y;
+  const a=-(k/m)*y;
+  v+=a*dt;
+  y+=v*dt;
 
-  v += a * dt;
-  y += v * dt;
-  t += dt;
-
-  const KE = 0.5 * m * v * v;
-  const PE = 0.5 * k * y * y;
-  const E = KE + PE;
+  const KE=0.5*m*v*v;
+  const PE=0.5*k*y*y;
+  const E=KE+PE;
 
   posData.push(y);
   velData.push(v);
   engData.push(E);
 
-  if (posData.length > 200) {
+  if(posData.length>150){
     posData.shift();
     velData.shift();
     engData.shift();
   }
 
   drawSystem();
-  drawGraph(posG, posData, "#00d4ff", "Position (m)", 300);
-  drawGraph(velG, velData, "red", "Velocity (m/s)", 60);
-  drawGraph(engG, engData, "lime", "Energy (J)", 300);
+  graph(posG,posData,"#00e5ff",0.15);
+  graph(velG,velData,"#ff3b3b",1.2);
+  graph(engG,engData,"#00ff88",0.06);
 
   requestAnimationFrame(update);
 }
 
-/* =======================
+/* =====================
    CONTROLS
-======================= */
-function startSim() {
-  if (!running) {
-    running = true;
-    update();
-  }
+===================== */
+function start(){
+  if(!running){ running=true; update(); }
 }
-
-function stopSim() {
-  running = false;
-}
+function stop(){ running=false; }
 
 drawSystem();
 </script>
