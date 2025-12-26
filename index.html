@@ -2,85 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Future Engineers | Spring–Mass Simulation</title>
+<title>Future Engineers | Spring–Mass Lab</title>
 
-<!-- GlowScript VPython -->
 <script src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
 <script src="https://www.glowscript.org/lib/RSrun.3.2.min.js"></script>
 
 <style>
-    body {
-        margin: 0;
-        background: radial-gradient(circle at top, #0f2027, #000);
-        color: white;
-        font-family: 'Segoe UI', sans-serif;
-        overflow-x: hidden;
-    }
+body {
+    margin: 0;
+    background: #000;
+    color: white;
+    font-family: Arial, sans-serif;
+}
 
-    header {
-        text-align: center;
-        padding: 25px 10px 10px;
-        font-size: 2.4em;
-        letter-spacing: 3px;
-        background: linear-gradient(90deg, #00c6ff, #0072ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: bold;
-    }
-
-    .subtitle {
-        text-align: center;
-        color: #9adfff;
-        margin-bottom: 10px;
-        font-size: 1.1em;
-    }
-
-    #glowscript {
-        width: 100%;
-        height: 85vh;
-    }
+header {
+    text-align: center;
+    padding: 20px;
+    font-size: 32px;
+    color: #00c6ff;
+}
 </style>
 </head>
 
 <body>
 
-<header>FUTURE ENGINEERS</header>
-<div class="subtitle">Spring–Mass Oscillation | Interactive Physics Lab</div>
+<header>FUTURE ENGINEERS – Spring Mass Simulation</header>
 
 <div id="glowscript"></div>
 
 <script type="text/javascript">
 "use strict";
 
-RSrun(function () {
-
+RSrun("glowscript", function () {
 
     let running = false;
 
-
     let scene = canvas({
         width: window.innerWidth,
-        height: window.innerHeight * 0.78,
-        background: color.black,
-        center: vec(0, 0.12, 0)
+        height: window.innerHeight * 0.75,
+        background: color.black
     });
 
-
-    button({
-        text: "Start",
-        bind: function () { running = true; }
-    });
-
-    button({
-        text: "Stop",
-        bind: function () { running = false; }
-    });
-
+    button({ text: "Start", bind: () => running = true });
+    button({ text: "Stop",  bind: () => running = false });
     scene.append_to_caption("\n\n");
 
-
     const g = 9.8;
-    const m = 0.10;
+    const m = 0.1;
     const k = 8;
     const L0 = 0.20;
     const L = 0.10;
@@ -91,18 +59,15 @@ RSrun(function () {
     let v = 0;
     let t = 0;
 
-    let E_max = 0.5 * k * y * y;
-
-
     let floor = box({
-        pos: vec(0, 0, 0),
-        size: vec(0.4, 0.02, 0.4),
+        pos: vec(0,0,0),
+        size: vec(0.4,0.02,0.4),
         color: color.green
     });
 
     let block = box({
-        pos: vec(0, L, 0),
-        size: vec(0.05, 0.05, 0.05),
+        pos: vec(0,L,0),
+        size: vec(0.05,0.05,0.05),
         color: color.orange
     });
 
@@ -110,61 +75,28 @@ RSrun(function () {
         pos: floor.pos,
         axis: block.pos.sub(floor.pos),
         radius: 0.02,
-        coils: 15,
-        thickness: 0.005
+        coils: 15
     });
-
 
     let pos_graph = graph({
         title: "Position vs Time",
         xtitle: "Time (s)",
         ytitle: "Displacement (m)"
     });
-    let pos_curve = gcurve({ color: color.blue });
-    let pos_high = gcurve({ color: color.cyan, width: 4 });
-
-    let vel_graph = graph({
-        title: "Velocity vs Time",
-        xtitle: "Time (s)",
-        ytitle: "Velocity (m/s)"
-    });
-    let vel_curve = gcurve({ color: color.red });
-    let vel_high = gcurve({ color: color.orange, width: 4 });
-
-    let energy_graph = graph({
-        title: "Energy vs Time",
-        xtitle: "Time (s)",
-        ytitle: "Energy (J)"
-    });
-    let energy_curve = gcurve({ color: color.green });
-    let energy_high = gcurve({ color: color.yellow, width: 4 });
-
+    let pos_curve = gcurve({ color: color.cyan });
 
     while (true) {
         rate(1000);
 
         if (running) {
-            let F = -k * y;
-            let a = F / m;
-
+            let a = (-k * y) / m;
             v += a * dt;
             y += v * dt;
 
             block.pos.y = L0 - (y + x_eq);
             spring.axis = block.pos.sub(floor.pos);
 
-            let KE = 0.5 * m * v * v;
-            let PE = 0.5 * k * y * y;
-            let E = KE + PE;
-
             pos_curve.plot(t, y);
-            vel_curve.plot(t, v);
-            energy_curve.plot(t, E);
-
-            if (y > 0) pos_high.plot(t, y);
-            if (v > 0) vel_high.plot(t, v);
-            if (E > 0.95 * E_max) energy_high.plot(t, E);
-
             t += dt;
         }
     }
@@ -173,4 +105,3 @@ RSrun(function () {
 
 </body>
 </html>
-
