@@ -2,78 +2,70 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Future Engineers | Spring–Mass Oscillation</title>
+<title>Future Engineers – Spring Mass Simulation</title>
 
 <style>
-:root {
-  --cyan: #00e5ff;
-  --red: #ff3b3b;
-  --green: #00ff88;
-}
-
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  background:
-    radial-gradient(circle at top, #0a1a2a, #000 60%);
-  color: #e6faff;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: radial-gradient(circle at top, #111 0%, #000 70%);
+  color: white;
 }
 
+/* ---------- HEADER ---------- */
 header {
   text-align: center;
-  padding: 40px 20px;
+  padding: 30px;
 }
 
 header h1 {
-  margin: 0;
-  font-size: 42px;
-  letter-spacing: 3px;
-  color: var(--cyan);
+  color: #00e5ff;
+  font-size: 36px;
+  letter-spacing: 2px;
 }
 
 header p {
-  opacity: 0.7;
+  color: #aaa;
+  font-size: 16px;
 }
 
+/* ---------- BUTTONS ---------- */
 .controls {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 button {
-  background: linear-gradient(135deg, var(--cyan), #008cff);
+  background: linear-gradient(135deg, #00e5ff, #0077ff);
   border: none;
-  color: #000;
-  padding: 14px 34px;
-  margin: 10px;
+  color: black;
   font-size: 16px;
-  font-weight: 700;
+  padding: 12px 30px;
+  margin: 10px;
   border-radius: 30px;
   cursor: pointer;
+  box-shadow: 0 0 20px #00e5ff66;
 }
 
-button:hover { transform: scale(1.05); }
-
-.panel {
-  max-width: 1000px;
-  margin: 25px auto;
-  padding: 25px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 40px rgba(0,229,255,0.08);
+button:hover {
+  transform: scale(1.05);
 }
 
-.panel h2 {
-  margin-top: 0;
-  color: var(--cyan);
-}
-
+/* ---------- CANVAS ---------- */
 canvas {
   display: block;
-  margin: 20px auto;
+  margin: 25px auto;
   background: #050505;
-  border-radius: 14px;
+  border-radius: 15px;
+  box-shadow: 0 0 30px #00e5ff22;
+}
+
+/* ---------- GRAPHS ---------- */
+.section-title {
+  text-align: center;
+  font-size: 26px;
+  color: #00e5ff;
+  margin-top: 40px;
 }
 </style>
 </head>
@@ -82,176 +74,180 @@ canvas {
 
 <header>
   <h1>FUTURE ENGINEERS</h1>
-  <p>Spring–Mass Oscillation • Physics Simulation</p>
+  <p>Spring–Mass Oscillation | Interactive Physics Lab</p>
 </header>
 
 <div class="controls">
-  <button onclick="start()">Start</button>
-  <button onclick="stop()">Stop</button>
+  <button onclick="startSim()">Start</button>
+  <button onclick="stopSim()">Stop</button>
 </div>
 
-<div class="panel">
-  <h2>Physical System</h2>
-  <canvas id="sim" width="800" height="350"></canvas>
-</div>
+<canvas id="simCanvas" width="900" height="350"></canvas>
 
-<div class="panel">
-  <h2>Graphs</h2>
-  <canvas id="pos" width="800" height="200"></canvas>
-  <canvas id="vel" width="800" height="200"></canvas>
-  <canvas id="eng" width="800" height="200"></canvas>
-</div>
+<div class="section-title">Graphs</div>
+
+<canvas id="posGraph" width="900" height="200"></canvas>
+<canvas id="velGraph" width="900" height="200"></canvas>
+<canvas id="energyGraph" width="900" height="200"></canvas>
 
 <script>
-/* =====================
-   CONTEXTS
-===================== */
-const sim = document.getElementById("sim").getContext("2d");
-const posG = document.getElementById("pos").getContext("2d");
-const velG = document.getElementById("vel").getContext("2d");
-const engG = document.getElementById("eng").getContext("2d");
-
-/* =====================
-   CONSTANTS (LAB)
-===================== */
-const m = 0.06;
-const k = 16;
+/* =========================
+   PHYSICAL CONSTANTS
+========================= */
+const m = 0.06;      // kg
+const k = 16;         // N/m
+const L0 = 0.20;     // m
+const L = 0.10;      // m
 const g = 9.8;
-const L0 = 0.20;
-const Linit = 0.10;
+const dt = 0.02;
 
-const dt = 0.01;
-const pxPerM = 350;
-
-/* =====================
-   STATE
-===================== */
-let y = Linit - L0 + (m*g)/k;
+/* =========================
+   STATE VARIABLES
+========================= */
+let x = L;
 let v = 0;
+let t = 0;
 let running = false;
+let interval;
 
-let posData=[], velData=[], engData=[];
+/* =========================
+   DATA STORAGE
+========================= */
+let posData = [];
+let velData = [];
+let energyData = [];
 
-/* =====================
-   AXES WITH NUMBERS
-===================== */
-function axes(ctx, yLabel, yMax) {
-  ctx.strokeStyle="#555";
-  ctx.fillStyle="#aaa";
-  ctx.lineWidth=1;
+/* =========================
+   CANVASES
+========================= */
+const sim = document.getElementById("simCanvas").getContext("2d");
+const posCtx = document.getElementById("posGraph").getContext("2d");
+const velCtx = document.getElementById("velGraph").getContext("2d");
+const energyCtx = document.getElementById("energyGraph").getContext("2d");
 
-  ctx.beginPath();
-  ctx.moveTo(60,10);
-  ctx.lineTo(60,180);
-  ctx.lineTo(780,180);
-  ctx.stroke();
+/* =========================
+   DRAW SIMULATION
+========================= */
+function drawSimulation() {
+  sim.clearRect(0, 0, 900, 350);
 
-  for(let i=0;i<=4;i++){
-    let y=180-i*40;
-    let val=(yMax*i/4).toFixed(2);
-    ctx.fillText(val,5,y+4);
-    ctx.beginPath();
-    ctx.moveTo(55,y);
-    ctx.lineTo(60,y);
-    ctx.stroke();
-  }
+  // Ceiling
+  sim.fillStyle = "white";
+  sim.fillRect(420, 20, 60, 10);
 
-  ctx.fillText(yLabel,5,12);
-  ctx.fillText("Time (s)",720,195);
-}
-
-/* =====================
-   GRAPH DRAW
-===================== */
-function graph(ctx,data,color,yMax){
-  ctx.clearRect(0,0,800,200);
-  axes(ctx,"",yMax);
-
-  ctx.strokeStyle=color;
-  ctx.shadowColor=color;
-  ctx.shadowBlur=10;
-  ctx.lineWidth=2;
-
-  ctx.beginPath();
-  data.forEach((v,i)=>{
-    let x=60+i*4;
-    let y=180-(v/yMax)*160;
-    if(i===0) ctx.moveTo(x,y);
-    else ctx.lineTo(x,y);
-  });
-  ctx.stroke();
-  ctx.shadowBlur=0;
-}
-
-/* =====================
-   SYSTEM DRAW
-===================== */
-function drawSystem(){
-  sim.clearRect(0,0,800,350);
-
-  const top=40;
-  const blockY=top+(L0+y)*pxPerM;
-
-  sim.strokeStyle="white";
+  // Spring
+  sim.strokeStyle = "yellow";
+  sim.lineWidth = 4;
   sim.beginPath();
-  sim.moveTo(400,top-10);
-  sim.lineTo(400,top);
+  sim.moveTo(450, 30);
+  sim.lineTo(450, 30 + x * 600);
   sim.stroke();
 
-  sim.strokeStyle="var(--cyan)";
-  sim.lineWidth=4;
+  // Mass
+  sim.fillStyle = "red";
   sim.beginPath();
-  sim.moveTo(400,top);
-  sim.lineTo(400,blockY);
-  sim.stroke();
-
-  sim.fillStyle="#ff5555";
-  sim.beginPath();
-  sim.arc(400,blockY+25,25,0,Math.PI*2);
+  sim.arc(450, 30 + x * 600 + 20, 20, 0, Math.PI * 2);
   sim.fill();
 }
 
-/* =====================
-   LOOP
-===================== */
-function update(){
-  if(!running) return;
+/* =========================
+   DRAW AXES
+========================= */
+function drawAxes(ctx, title, yLabel) {
+  ctx.clearRect(0, 0, 900, 200);
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 1;
 
-  const a=-(k/m)*y;
-  v+=a*dt;
-  y+=v*dt;
+  ctx.beginPath();
+  ctx.moveTo(60, 10);
+  ctx.lineTo(60, 160);
+  ctx.lineTo(880, 160);
+  ctx.stroke();
 
-  const KE=0.5*m*v*v;
-  const PE=0.5*k*y*y;
-  const E=KE+PE;
+  ctx.fillStyle = "#00e5ff";
+  ctx.font = "16px Arial";
+  ctx.fillText(title, 70, 25);
 
-  posData.push(y);
+  ctx.fillStyle = "#aaa";
+  ctx.font = "13px Arial";
+  ctx.fillText(yLabel, 10, 20);
+  ctx.fillText("Time (s)", 820, 190);
+}
+
+/* =========================
+   PLOT GRAPH
+========================= */
+function plot(ctx, data, color, scale) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  data.forEach((p, i) => {
+    let x = 60 + i * 3;
+    let y = 160 - p * scale;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+}
+
+/* =========================
+   UPDATE LOOP
+========================= */
+function update() {
+  if (!running) return;
+
+  const F = -k * (x - L0) + m * g;
+  const a = F / m;
+
+  v += a * dt;
+  x += v * dt;
+  t += dt;
+
+  const KE = 0.5 * m * v * v;
+  const PE = 0.5 * k * (x - L0) ** 2;
+  const E = KE + PE;
+
+  posData.push(x);
   velData.push(v);
-  engData.push(E);
+  energyData.push(E);
 
-  if(posData.length>150){
+  if (posData.length > 250) {
     posData.shift();
     velData.shift();
-    engData.shift();
+    energyData.shift();
   }
 
-  drawSystem();
-  graph(posG,posData,"#00e5ff",0.15);
-  graph(velG,velData,"#ff3b3b",1.2);
-  graph(engG,engData,"#00ff88",0.06);
+  drawSimulation();
 
-  requestAnimationFrame(update);
+  drawAxes(posCtx, "Position vs Time", "Position (m)");
+  plot(posCtx, posData, "#00e5ff", 700);
+
+  drawAxes(velCtx, "Velocity vs Time", "Velocity (m/s)");
+  plot(velCtx, velData, "#ff3333", 60);
+
+  drawAxes(energyCtx, "Total Energy vs Time", "Energy (J)");
+  plot(energyCtx, energyData, "#00ff88", 2500);
 }
 
-/* =====================
+/* =========================
    CONTROLS
-===================== */
-function start(){
-  if(!running){ running=true; update(); }
+========================= */
+function startSim() {
+  if (!running) {
+    running = true;
+    interval = setInterval(update, 20);
+  }
 }
-function stop(){ running=false; }
 
-drawSystem();
+function stopSim() {
+  running = false;
+  clearInterval(interval);
+}
+
+/* INITIAL DRAW */
+drawSimulation();
 </script>
 
 </body>
