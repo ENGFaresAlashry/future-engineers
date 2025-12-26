@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Future Engineers | Spring–Mass Oscillation</title>
+
+<style>
+:root {
+  --cyan: #00e5ff;
+  --red: #ff3b3b;
+  --green: #00ff88;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at top, #0a1a2a, #000 60%);
+  color: #e6faff;
+}
+
+header {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 42px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+}
+
+header p {
+  opacity: 0.7;
+}
+
+.controls {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+button {
+  background: linear-gradient(135deg, var(--cyan), #008cff);
+  border: none;
+  color: #000;
+  padding: 14px 34px;
+  margin: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 30px;
+  cursor: pointer;
+}
+
+button:hover { transform: scale(1.05); }
+
+.panel {
+  max-width: 1000px;
+  margin: 25px auto;
+  padding: 25px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 40px rgba(0,229,255,0.08);
+}
+
+.panel h2 {
+  margin-top: 0;
+  color: var(--cyan);
+}
+
+canvas {
+  display: block;
+  margin: 20px auto;
+  background: #050505;
+  border-radius: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>FUTURE ENGINEERS</h1>
+  <p>Spring–Mass Oscillation • Physics Simulation</p>
+</header>
+
+<div class="controls">
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
+</div>
+
+<div class="panel">
+  <h2>Physical System</h2>
+  <canvas id="sim" width="800" height="350"></canvas>
+</div>
+
+<div class="panel">
+  <h2>Graphs</h2>
+  <canvas id="pos" width="800" height="200"></canvas>
+  <canvas id="vel" width="800" height="200"></canvas>
+  <canvas id="eng" width="800" height="200"></canvas>
+</div>
+
+<script>
+/* =====================
+   CONTEXTS
+===================== */
+const sim = document.getElementById("sim").getContext("2d");
+const posG = document.getElementById("pos").getContext("2d");
+const velG = document.getElementById("vel").getContext("2d");
+const engG = document.getElementById("eng").getContext("2d");
+
+/* =====================
+   CONSTANTS (LAB)
+===================== */
+const m = 0.12;
+const k = 8;
+const g = 9.8;
+const L0 = 0.20;
+const Linit = 0.10;
+
+const dt = 0.01;
+const pxPerM = 350;
+
+/* =====================
+   STATE
+===================== */
+let y = Linit - L0 + (m*g)/k;
+let v = 0;
+let running = false;
+
+let posData=[], velData=[], engData=[];
+
+/* =====================
+   AXES WITH NUMBERS
+===================== */
+function axes(ctx, yLabel, yMax) {
+  ctx.strokeStyle="#555";
+  ctx.fillStyle="#aaa";
+  ctx.lineWidth=1;
+
+  ctx.beginPath();
+  ctx.moveTo(60,10);
+  ctx.lineTo(60,180);
+  ctx.lineTo(780,180);
+  ctx.stroke();
+
+  for(let i=0;i<=4;i++){
+    let y=180-i*40;
+    let val=(yMax*i/4).toFixed(2);
+    ctx.fillText(val,5,y+4);
+    ctx.beginPath();
+    ctx.moveTo(55,y);
+    ctx.lineTo(60,y);
+    ctx.stroke();
+  }
+
+  ctx.fillText(yLabel,5,12);
+  ctx.fillText("Time (s)",720,195);
+}
+
+/* =====================
+   GRAPH DRAW
+===================== */
+function graph(ctx,data,color,yMax){
+  ctx.clearRect(0,0,800,200);
+  axes(ctx,"",yMax);
+
+  ctx.strokeStyle=color;
+  ctx.shadowColor=color;
+  ctx.shadowBlur=10;
+  ctx.lineWidth=2;
+
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    let x=60+i*4;
+    let y=180-(v/yMax)*160;
+    if(i===0) ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.shadowBlur=0;
+}
+
+/* =====================
+   SYSTEM DRAW
+===================== */
+function drawSystem(){
+  sim.clearRect(0,0,800,350);
+
+  const top=40;
+  const blockY=top+(L0+y)*pxPerM;
+
+  sim.strokeStyle="white";
+  sim.beginPath();
+  sim.moveTo(400,top-10);
+  sim.lineTo(400,top);
+  sim.stroke();
+
+  sim.strokeStyle="var(--cyan)";
+  sim.lineWidth=4;
+  sim.beginPath();
+  sim.moveTo(400,top);
+  sim.lineTo(400,blockY);
+  sim.stroke();
+
+  sim.fillStyle="#ff5555";
+  sim.beginPath();
+  sim.arc(400,blockY+25,25,0,Math.PI*2);
+  sim.fill();
+}
+
+/* =====================
+   LOOP
+===================== */
+function update(){
+  if(!running) return;
+
+  const a=-(k/m)*y;
+  v+=a*dt;
+  y+=v*dt;
+
+  const KE=0.5*m*v*v;
+  const PE=0.5*k*y*y;
+  const E=KE+PE;
+
+  posData.push(y);
+  velData.push(v);
+  engData.push(E);
+
+  if(posData.length>150){
+    posData.shift();
+    velData.shift();
+    engData.shift();
+  }
+
+  drawSystem();
+  graph(posG,posData,"#00e5ff",0.15);
+  graph(velG,velData,"#ff3b3b",1.2);
+  graph(engG,engData,"#00ff88",0.06);
+
+  requestAnimationFrame(update);
+}
+
+/* =====================
+   CONTROLS
+===================== */
+function start(){
+  if(!running){ running=true; update(); }
+}
+function stop(){ running=false; }
+
+drawSystem();
+</script>
+
+</body>
+</html>
