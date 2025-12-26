@@ -1,47 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Future Engineers – Spring Mass Simulation</title>
+<meta charset="UTF-8">
+<title>Future Engineers – Spring Mass Simulation</title>
 
-  <!-- GlowScript / VPython -->
-  <script type="text/javascript"
-    src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
-  <script type="text/javascript"
-    src="https://www.glowscript.org/lib/GlowScriptControls.min.js"></script>
+<style>
+body {
+  margin: 0;
+  background: black;
+  color: #00ccff;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
 
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      color: #00ccff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    h1 {
-      margin-top: 20px;
-    }
-    #controls {
-      margin: 20px;
-    }
-    button {
-      background: #00ccff;
-      color: black;
-      border: none;
-      padding: 12px 25px;
-      margin: 10px;
-      font-size: 16px;
-      border-radius: 20px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #00ffff;
-    }
-    #glowscene {
-      width: 100%;
-      height: 600px;
-    }
-  </style>
+h1 {
+  margin-top: 20px;
+}
+
+#controls {
+  margin: 20px;
+}
+
+button {
+  background: #00ccff;
+  color: black;
+  border: none;
+  padding: 12px 25px;
+  margin: 10px;
+  font-size: 16px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+canvas {
+  background: #111;
+  display: block;
+  margin: auto;
+}
+</style>
 </head>
 
 <body>
@@ -53,81 +49,78 @@
   <button onclick="stopSim()">Stop</button>
 </div>
 
-<div id="glowscene"></div>
+<canvas id="simCanvas" width="800" height="500"></canvas>
 
 <script>
-"use strict";
+const canvas = document.getElementById("simCanvas");
+const ctx = canvas.getContext("2d");
 
 let running = false;
-let ball, spring;
-let v = 0;
-let y = 0;
-let t = 0;
 
+// Physics constants
 const m = 0.2;
-const k = 10;
-const L0 = 1;
+const k = 15;
 const g = 9.8;
-const dt = 0.01;
+const L0 = 150;
+const dt = 0.02;
 
-function initScene() {
-  scene = canvas({
-    width: window.innerWidth,
-    height: 600,
-    background: color.black,
-    container: document.getElementById("glowscene")
-  });
+// State variables
+let y = 200;
+let v = 0;
+const ceilingY = 50;
 
-  let ceiling = box({pos: vec(0,1.5,0), size: vec(0.6,0.05,0.6), color: color.white});
+function drawSpring(x1, y1, x2, y2) {
+  ctx.strokeStyle = "yellow";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
 
-  ball = sphere({
-    pos: vec(0,0,0),
-    radius: 0.1,
-    color: color.red,
-    make_trail: true
-  });
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  spring = helix({
-    pos: ceiling.pos,
-    axis: ball.pos - ceiling.pos,
-    radius: 0.05,
-    coils: 15,
-    thickness: 0.02,
-    color: color.yellow
-  });
+  // Ceiling
+  ctx.fillStyle = "white";
+  ctx.fillRect(370, ceilingY - 10, 60, 10);
 
-  y = ball.pos.y;
-  v = 0;
+  // Spring
+  drawSpring(400, ceilingY, 400, y);
+
+  // Mass
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(400, y + 20, 20, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function update() {
+  if (!running) return;
+
+  let L = y - ceilingY;
+  let Fspring = -k * (L - L0);
+  let a = (Fspring - m * g * 30) / m;
+
+  v += a * dt;
+  y += v * dt;
+
+  draw();
+  requestAnimationFrame(update);
 }
 
 function startSim() {
-  if (running) return;
-  running = true;
-
-  if (!ball) initScene();
-
-  run();
+  if (!running) {
+    running = true;
+    update();
+  }
 }
 
 function stopSim() {
   running = false;
 }
 
-async function run() {
-  while (running) {
-    await rate(100);
-
-    let L = ball.pos.y - 1.5;
-    let Fspring = -k * (Math.abs(L) - L0);
-    let a = (Fspring - m * g) / m;
-
-    v += a * dt;
-    y += v * dt;
-
-    ball.pos.y = y;
-    spring.axis = ball.pos - vec(0,1.5,0);
-  }
-}
+draw();
 </script>
 
 </body>
