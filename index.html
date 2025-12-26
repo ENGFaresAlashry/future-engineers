@@ -14,11 +14,11 @@ body {
 }
 
 h1 {
-  margin-top: 20px;
+  margin: 20px;
 }
 
 #controls {
-  margin: 20px;
+  margin-bottom: 10px;
 }
 
 button {
@@ -35,7 +35,8 @@ button {
 canvas {
   background: #111;
   display: block;
-  margin: auto;
+  margin: 20px auto;
+  border: 1px solid #333;
 }
 </style>
 </head>
@@ -49,66 +50,118 @@ canvas {
   <button onclick="stopSim()">Stop</button>
 </div>
 
-<canvas id="simCanvas" width="800" height="500"></canvas>
+<canvas id="simCanvas" width="600" height="350"></canvas>
+<canvas id="posCanvas" width="600" height="150"></canvas>
+<canvas id="velCanvas" width="600" height="150"></canvas>
+<canvas id="engCanvas" width="600" height="150"></canvas>
 
 <script>
-const canvas = document.getElementById("simCanvas");
-const ctx = canvas.getContext("2d");
+/* =============================
+   CANVAS SETUP
+============================= */
+const sim = simCanvas.getContext("2d");
+const posG = posCanvas.getContext("2d");
+const velG = velCanvas.getContext("2d");
+const engG = engCanvas.getContext("2d");
 
-let running = false;
-
-// Physics constants
+/* =============================
+   PHYSICS CONSTANTS
+============================= */
 const m = 0.2;
 const k = 15;
 const g = 9.8;
 const L0 = 150;
 const dt = 0.02;
 
-// State variables
+let running = false;
+let t = 0;
 let y = 200;
 let v = 0;
-const ceilingY = 50;
 
-function drawSpring(x1, y1, x2, y2) {
-  ctx.strokeStyle = "yellow";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-}
+const ceilingY = 40;
+let posData = [], velData = [], engData = [];
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* =============================
+   DRAW FUNCTIONS
+============================= */
+function drawSpringMass() {
+  sim.clearRect(0, 0, 600, 350);
 
   // Ceiling
-  ctx.fillStyle = "white";
-  ctx.fillRect(370, ceilingY - 10, 60, 10);
+  sim.fillStyle = "white";
+  sim.fillRect(270, ceilingY - 10, 60, 10);
 
   // Spring
-  drawSpring(400, ceilingY, 400, y);
+  sim.strokeStyle = "yellow";
+  sim.lineWidth = 3;
+  sim.beginPath();
+  sim.moveTo(300, ceilingY);
+  sim.lineTo(300, y);
+  sim.stroke();
 
   // Mass
-  ctx.fillStyle = "red";
-  ctx.beginPath();
-  ctx.arc(400, y + 20, 20, 0, Math.PI * 2);
-  ctx.fill();
+  sim.fillStyle = "red";
+  sim.beginPath();
+  sim.arc(300, y + 20, 20, 0, Math.PI * 2);
+  sim.fill();
 }
 
+function drawGraph(ctx, data, color, label) {
+  ctx.clearRect(0, 0, 600, 150);
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+
+  data.forEach((val, i) => {
+    let x = i * 3;
+    let y = 75 - val * 20;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+  ctx.fillStyle = "#00ccff";
+  ctx.fillText(label, 10, 15);
+}
+
+/* =============================
+   SIMULATION LOOP
+============================= */
 function update() {
   if (!running) return;
 
   let L = y - ceilingY;
-  let Fspring = -k * (L - L0);
-  let a = (Fspring - m * g * 30) / m;
+  let Fs = -k * (L - L0);
+  let a = (Fs - m * g * 30) / m;
 
   v += a * dt;
   y += v * dt;
+  t += dt;
 
-  draw();
+  let KE = 0.5 * m * v * v;
+  let PE = 0.5 * k * Math.pow(L - L0, 2);
+  let E = KE + PE;
+
+  posData.push((y - 200) / 100);
+  velData.push(v / 20);
+  engData.push(E / 10);
+
+  if (posData.length > 200) {
+    posData.shift();
+    velData.shift();
+    engData.shift();
+  }
+
+  drawSpringMass();
+  drawGraph(posG, posData, "cyan", "Position vs Time");
+  drawGraph(velG, velData, "red", "Velocity vs Time");
+  drawGraph(engG, engData, "lime", "Total Energy vs Time");
+
   requestAnimationFrame(update);
 }
 
+/* =============================
+   BUTTONS
+============================= */
 function startSim() {
   if (!running) {
     running = true;
@@ -120,7 +173,7 @@ function stopSim() {
   running = false;
 }
 
-draw();
+drawSpringMass();
 </script>
 
 </body>
