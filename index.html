@@ -1,144 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Future Engineers – Spring Mass Simulation</title>
-
+<title>Spring–Mass System</title>
 <style>
 body {
-  margin: 0;
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: radial-gradient(circle at top, #111 0%, #000 70%);
+  background: radial-gradient(circle at top,#111,#000);
   color: white;
-}
-
-header {
-  text-align: center;
-  padding: 30px;
-}
-
-header h1 {
-  color: #00e5ff;
-  font-size: 36px;
-  letter-spacing: 2px;
-}
-
-header p {
-  color: #aaa;
-}
-
-.controls {
+  font-family: Arial;
   text-align: center;
 }
-
-button {
-  background: linear-gradient(135deg, #00e5ff, #0077ff);
-  border: none;
-  padding: 12px 30px;
-  margin: 10px;
-  border-radius: 30px;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 0 20px #00e5ff66;
-}
-
 canvas {
-  display: block;
-  margin: 25px auto;
-  background: #050505;
-  border-radius: 15px;
-  box-shadow: 0 0 30px #00e5ff22;
+  background:#050505;
+  margin:20px auto;
+  display:block;
+  border-radius:12px;
+  box-shadow:0 0 25px #00e5ff33;
+}
+button {
+  padding:12px 28px;
+  margin:10px;
+  border:none;
+  border-radius:25px;
+  background:#00e5ff;
+  font-size:16px;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<header>
-  <h1>FUTURE ENGINEERS</h1>
-  <p>Spring–Mass Oscillation | Interactive Physics Lab</p>
-</header>
+<h1 style="color:#00e5ff">Spring–Mass Oscillation</h1>
 
-<div class="controls">
-  <button onclick="startSim()">Start</button>
-  <button onclick="stopSim()">Stop</button>
-</div>
+<button onclick="start()">Start</button>
+<button onclick="stop()">Stop</button>
 
-<canvas id="simCanvas" width="900" height="350"></canvas>
-<canvas id="posGraph" width="900" height="200"></canvas>
-<canvas id="velGraph" width="900" height="200"></canvas>
-<canvas id="energyGraph" width="900" height="200"></canvas>
+<canvas id="sim" width="900" height="300"></canvas>
+<canvas id="posC" width="900" height="200"></canvas>
+<canvas id="velC" width="900" height="200"></canvas>
+<canvas id="engC" width="900" height="200"></canvas>
 
 <script>
-/* ========= CONSTANTS ========= */
+// ===== CONSTANTS =====
 const m = 0.06;
 const k = 8;
 const L0 = 0.20;
 const g = 9.8;
 const dt = 0.02;
 
-/* ========= STATE ========= */
+// ===== EQUILIBRIUM =====
+const x_eq = L0 + (m*g)/k;
+
+// ===== STATE =====
 let x = 0.10;
 let v = 0;
-let running = false;
-let timer;
+let run=false, timer;
 
-/* ========= DATA ========= */
-let pos = [], vel = [], energy = [];
+// ===== DATA =====
+let X=[], V=[], E=[];
 
-/* ========= CONTEXTS ========= */
-const sim = simCanvas.getContext("2d");
-const pCtx = posGraph.getContext("2d");
-const vCtx = velGraph.getContext("2d");
-const eCtx = energyGraph.getContext("2d");
+// ===== CONTEXTS =====
+const s=sim.getContext("2d");
+const p=posC.getContext("2d");
+const vctx=velC.getContext("2d");
+const e=engC.getContext("2d");
 
-/* ========= DRAW SIM ========= */
-function drawSim() {
-  sim.clearRect(0,0,900,350);
+// ===== DRAW SIM =====
+function drawSim(){
+  s.clearRect(0,0,900,300);
+  s.fillStyle="white";
+  s.fillRect(430,20,40,10);
 
-  sim.fillStyle="white";
-  sim.fillRect(420,20,60,10);
+  s.strokeStyle="yellow";
+  s.lineWidth=4;
+  s.beginPath();
+  s.moveTo(450,30);
+  s.lineTo(450,30+(x*700));
+  s.stroke();
 
-  sim.strokeStyle="yellow";
-  sim.lineWidth=4;
-  sim.beginPath();
-  sim.moveTo(450,30);
-  sim.lineTo(450,30+x*600);
-  sim.stroke();
-
-  sim.fillStyle="red";
-  sim.beginPath();
-  sim.arc(450,30+x*600+20,20,0,Math.PI*2);
-  sim.fill();
+  s.fillStyle="red";
+  s.beginPath();
+  s.arc(450,30+x*700+18,18,0,Math.PI*2);
+  s.fill();
 }
 
-/* ========= GRAPH UTIL ========= */
-function drawGraph(ctx,title,yLabel,data,color,scale,centered=true){
+// ===== GRAPH FUNCTION =====
+function graph(ctx,title,ylabel,data,color,center=true){
   ctx.clearRect(0,0,900,200);
-
-  const left=70, top=40, height=120, mid=top+height/2;
+  const L=80, T=40, H=120, M=T+H/2;
 
   ctx.strokeStyle="#444";
   ctx.beginPath();
-  ctx.moveTo(left,top);
-  ctx.lineTo(left,top+height);
-  ctx.lineTo(880,top+height);
+  ctx.moveTo(L,T); ctx.lineTo(L,T+H); ctx.lineTo(880,T+H);
   ctx.stroke();
 
   ctx.fillStyle="#00e5ff";
   ctx.font="16px Arial";
-  ctx.fillText(title,left+10,25);
+  ctx.fillText(title,L+10,25);
 
   ctx.fillStyle="#aaa";
   ctx.font="13px Arial";
-  ctx.fillText(yLabel,10,55);
+  ctx.fillText(ylabel,10,60);
   ctx.fillText("Time (s)",820,185);
 
-  if(centered){
+  let max=Math.max(...data.map(d=>Math.abs(d))) || 1;
+  let scale=(H/2)/max*0.9;
+
+  if(center){
     ctx.strokeStyle="#333";
     ctx.beginPath();
-    ctx.moveTo(left,mid);
-    ctx.lineTo(880,mid);
+    ctx.moveTo(L,M); ctx.lineTo(880,M);
     ctx.stroke();
   }
 
@@ -146,47 +118,37 @@ function drawGraph(ctx,title,yLabel,data,color,scale,centered=true){
   ctx.lineWidth=2;
   ctx.beginPath();
   data.forEach((d,i)=>{
-    const x=left+i*3;
-    const y=centered ? mid-d*scale : top+height-d*scale;
+    let x=L+i*3;
+    let y=center? M-d*scale : T+H-d*scale;
     if(i===0) ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   });
   ctx.stroke();
 }
 
-/* ========= UPDATE ========= */
-function update(){
+// ===== UPDATE =====
+function step(){
   const F=-k*(x-L0)+m*g;
   const a=F/m;
 
   v+=a*dt;
   x+=v*dt;
 
-  pos.push(x-L0);
-  vel.push(v);
-  energy.push(0.5*m*v*v+0.5*k*(x-L0)**2);
+  X.push(x-x_eq);
+  V.push(v);
+  E.push(0.5*m*v*v+0.5*k*(x-x_eq)**2);
 
-  if(pos.length>250){
-    pos.shift();vel.shift();energy.shift();
-  }
+  if(X.length>250){X.shift();V.shift();E.shift();}
 
   drawSim();
-  drawGraph(pCtx,"Position vs Time","Position (m)",pos,"#00e5ff",800);
-  drawGraph(vCtx,"Velocity vs Time","Velocity (m/s)",vel,"#ff3333",60);
-  drawGraph(eCtx,"Total Energy vs Time","Energy (J)",energy,"#00ff88",2500,false);
+  graph(p,"Position vs Time","Displacement (m)",X,"#00e5ff");
+  graph(vctx,"Velocity vs Time","Velocity (m/s)",V,"#ff3333");
+  graph(e,"Total Energy vs Time","Energy (J)",E,"#00ff88",false);
 }
 
-/* ========= CONTROLS ========= */
-function startSim(){
-  if(!running){
-    running=true;
-    timer=setInterval(update,20);
-  }
-}
-function stopSim(){
-  running=false;
-  clearInterval(timer);
-}
+// ===== CONTROL =====
+function start(){ if(!run){run=true;timer=setInterval(step,20);} }
+function stop(){ run=false; clearInterval(timer); }
 
 drawSim();
 </script>
