@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Spring–Mass System</title>
+<title>Spring–Mass Oscillator</title>
 
 <style>
 body {
@@ -46,15 +46,14 @@ button {
 // ================= PHYSICS =================
 const m = 0.06;
 const k = 8;
-const L0 = 0.20;
 const g = 9.8;
-const dt = 0.02;
+const L0 = 0.20;
+const dt = 0.01;
 
-// equilibrium length
-const x_eq = L0 + (m * g) / k;
+const x_eq = L0 + (m*g)/k;
 
-// state variables (ABOUT equilibrium)
-let x = x_eq + 0.02;
+// Initial conditions (small, stable)
+let x = x_eq + 0.015;
 let v = 0;
 
 // ================= DATA =================
@@ -65,16 +64,15 @@ let run=false, timer;
 const sim = document.getElementById("sim").getContext("2d");
 const p = document.getElementById("posC").getContext("2d");
 const vc = document.getElementById("velC").getContext("2d");
-const ec = document.getElementById("engC").getContext("2d");
+const ec = document.getElementById("engC").getContext("engC") || document.getElementById("engC").getContext("2d");
 
 // ================= SIM DRAW =================
 function drawSim(){
   sim.clearRect(0,0,900,300);
 
   const center = 150;
-  const scale = 300;
+  const scale = 200;
 
-  // Ceiling
   sim.fillStyle="white";
   sim.fillRect(430,20,40,10);
 
@@ -89,16 +87,14 @@ function drawSim(){
   const bottomY = center + (x - x_eq)*scale;
   const length = bottomY - topY;
 
-  for(let i=0;i<=100;i++){
-    const t = i/100;
-    const y = topY + t*length;
-    const angle = coils * 2 * Math.PI * t;
-    const xOffset = amp * Math.sin(angle);
-    sim.lineTo(450 + xOffset, y);
+  for(let i=0;i<=120;i++){
+    let t = i/120;
+    let y = topY + t*length;
+    let xo = amp * Math.sin(coils*2*Math.PI*t);
+    sim.lineTo(450 + xo, y);
   }
   sim.stroke();
 
-  // Mass
   sim.fillStyle="red";
   sim.beginPath();
   sim.arc(450, bottomY + 18, 18, 0, Math.PI*2);
@@ -106,7 +102,7 @@ function drawSim(){
 }
 
 // ================= GRAPH =================
-function drawGraph(ctx,title,ylabel,data,color,center=true){
+function drawGraph(ctx,title,ylabel,data,color){
   ctx.clearRect(0,0,900,220);
 
   const L=80, T=40, H=130, W=780;
@@ -131,36 +127,47 @@ function drawGraph(ctx,title,ylabel,data,color,center=true){
   let max=Math.max(...data.map(d=>Math.abs(d))) || 1;
   let scale=(H/2)/max*0.85;
 
+  // Y-axis ticks
+  ctx.fillStyle="#aaa";
+  for(let i=-2;i<=2;i++){
+    let y = mid - i*(H/4);
+    ctx.fillText((i*max/2).toFixed(3),30,y+4);
+    ctx.strokeStyle="#222";
+    ctx.beginPath();
+    ctx.moveTo(L,y);
+    ctx.lineTo(L+W,y);
+    ctx.stroke();
+  }
+
   ctx.strokeStyle=color;
   ctx.lineWidth=2;
   ctx.beginPath();
   data.forEach((d,i)=>{
     let xg=L+i*3;
-    let yg=center ? mid-d*scale : T+H-d*scale;
+    let yg=mid-d*scale;
     if(i===0) ctx.moveTo(xg,yg);
     else ctx.lineTo(xg,yg);
   });
   ctx.stroke();
 }
 
-// ================= UPDATE =================
+// ================= UPDATE (VERLET) =================
 function step(){
-  const F = -k * (x - x_eq);
-  const a = F / m;
+  const a = -k*(x-x_eq)/m;
+  x += v*dt + 0.5*a*dt*dt;
+  const a2 = -k*(x-x_eq)/m;
+  v += 0.5*(a+a2)*dt;
 
-  x += v * dt + 0.5 * a * dt * dt;
-  v += a * dt;
-
-  X.push(x - x_eq);
+  X.push(x-x_eq);
   V.push(v);
-  E.push(0.5*m*v*v + 0.5*k*(x - x_eq)**2);
+  E.push(0.5*m*v*v + 0.5*k*(x-x_eq)**2);
 
   if(X.length>250){X.shift();V.shift();E.shift();}
 
   drawSim();
   drawGraph(p,"Position vs Time","Displacement (m)",X,"#00e5ff");
   drawGraph(vc,"Velocity vs Time","Velocity (m/s)",V,"#ff3333");
-  drawGraph(ec,"Total Energy vs Time","Energy (J)",E,"#00ff88",false);
+  drawGraph(ec,"Total Energy vs Time","Energy (J)",E,"#00ff88");
 }
 
 // ================= CONTROL =================
