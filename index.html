@@ -175,11 +175,12 @@ function drawGraph(ctx, title, ylabel, data, color, centered = true) {
 
 
 function step() {
-  const F = -k * (x - L0) + m * g;
-  const a = F / m;
+const F = -k * (x - L0) + m * g;
+const a = F / m;
 
-  v += a * dt;
-  x += v * dt;
+x += v * dt + 0.5 * a * dt * dt;
+v += a * dt;
+
 
   X.push(x - x_eq);
   V.push(v);
@@ -212,4 +213,5 @@ drawSim();
 
 </body>
 </html>
+
 
