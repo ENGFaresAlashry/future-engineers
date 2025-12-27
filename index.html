@@ -69,20 +69,33 @@ const ec = document.getElementById("engC").getContext("2d");
 function drawSim(){
   sim.clearRect(0,0,900,300);
 
-  const top = 40;
   const center = 150;
-  const scale = 350; // VISUAL SCALE ONLY
+  const scale = 350;
+
+  const topY = 30;
+  const bottomY = center + (x - x_eq)*scale;
 
   // Ceiling
   sim.fillStyle="white";
   sim.fillRect(430,20,40,10);
 
-  // Spring
+  // ===== HELIX SPRING =====
   sim.strokeStyle="yellow";
-  sim.lineWidth=4;
+  sim.lineWidth=3;
   sim.beginPath();
-  sim.moveTo(450,30);
-  sim.lineTo(450, center + (x - x_eq)*scale);
+
+  const coils = 14;          // number of coils
+  const radius = 10;         // coil width
+  const steps = 120;         // smoothness
+
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    const y = topY + t*(bottomY - topY);
+    const angle = t * coils * 2*Math.PI;
+    const xOffset = Math.sin(angle) * radius;
+    sim.lineTo(450 + xOffset, y);
+  }
+
   sim.stroke();
 
   // Mass
@@ -90,7 +103,7 @@ function drawSim(){
   sim.beginPath();
   sim.arc(
     450,
-    center + (x - x_eq)*scale + 18,
+    bottomY + 18,
     18,0,Math.PI*2
   );
   sim.fill();
