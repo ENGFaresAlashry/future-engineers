@@ -156,7 +156,7 @@ function step(){
   const a = -k*(x-x_eq)/m;
   x += v*dt + 0.5*a*dt*dt;
   const a2 = -k*(x-x_eq)/m;
-  v += 0.5*(a+a2)*dt;
+  v += (a+a2)*dt;
 
   X.push(x-x_eq);
   V.push(v);
@@ -183,3 +183,4 @@ drawSim();
 
 </body>
 </html>
+
