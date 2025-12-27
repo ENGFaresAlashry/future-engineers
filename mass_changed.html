@@ -1,31 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Spring–Mass Oscillator</title>
+<title>Spring–Mass System</title>
 
 <style>
 body {
-  background: radial-gradient(circle at top,#111,#000);
+  background: radial-gradient(circle at top, #111, #000);
   color: white;
-  font-family: Arial;
+  font-family: Arial, Helvetica, sans-serif;
   text-align: center;
 }
 canvas {
-  background:#050505;
-  margin:20px auto;
-  display:block;
-  border-radius:12px;
-  box-shadow:0 0 25px #00e5ff33;
+  background: #050505;
+  margin: 20px auto;
+  display: block;
+  border-radius: 14px;
+  box-shadow: 0 0 25px #00e5ff33;
 }
 button {
-  padding:12px 28px;
-  margin:10px;
-  border:none;
-  border-radius:25px;
-  background:#00e5ff;
-  font-size:16px;
-  cursor:pointer;
+  padding: 12px 28px;
+  margin: 10px;
+  border: none;
+  border-radius: 25px;
+  background: #00e5ff;
+  font-size: 16px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -43,139 +43,145 @@ button {
 <canvas id="engC" width="900" height="220"></canvas>
 
 <script>
-// ================= PHYSICS =================
 const m = 0.12;
 const k = 8;
-const g = 9.8;
 const L0 = 0.20;
-const dt = 0.01;
+const g = 9.8;
+const dt = 0.02;
 
-const x_eq = L0 + (m*g)/k;
+const x_eq = L0 + (m * g) / k;
+const omega = Math.sqrt(k / m);
 
-// Initial conditions (small, stable)
-let x = x_eq + 0.015;
+let x = 0.12;
 let v = 0;
+let a = -(k / m) * (x - x_eq);
+let t = 0;
 
-// ================= DATA =================
-let X=[], V=[], E=[];
-let run=false, timer;
+const A = Math.abs(x - x_eq);
+const phi = 0;
+const E0 = 0.5 * k * A * A;
 
-// ================= CONTEXTS =================
+let X = [], V = [], E = [];
+let run = false, timer;
+
 const sim = document.getElementById("sim").getContext("2d");
 const p = document.getElementById("posC").getContext("2d");
 const vc = document.getElementById("velC").getContext("2d");
-const ec = document.getElementById("engC").getContext("engC") || document.getElementById("engC").getContext("2d");
+const ec = document.getElementById("engC").getContext("2d");
 
-// ================= SIM DRAW =================
-function drawSim(){
-  sim.clearRect(0,0,900,300);
-
-  const center = 150;
-  const scale = 200;
-
-  sim.fillStyle="white";
-  sim.fillRect(430,20,40,10);
-
-  // Helical spring
-  sim.strokeStyle="yellow";
-  sim.lineWidth=2;
-  sim.beginPath();
-
-  const coils = 14;
-  const amp = 10;
-  const topY = 30;
-  const bottomY = center + (x - x_eq)*scale;
-  const length = bottomY - topY;
-
-  for(let i=0;i<=120;i++){
-    let t = i/120;
-    let y = topY + t*length;
-    let xo = amp * Math.sin(coils*2*Math.PI*t);
-    sim.lineTo(450 + xo, y);
+function drawSpring(ctx, x0, y0, x1, y1, coils = 18, radius = 10) {
+  ctx.strokeStyle = "yellow";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  const length = y1 - y0;
+  for (let i = 0; i <= coils * 10; i++) {
+    const u = i / (coils * 10);
+    const y = y0 + u * length;
+    const x = x0 + Math.sin(u * coils * 2 * Math.PI) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   }
-  sim.stroke();
+  ctx.stroke();
+}
 
-  sim.fillStyle="red";
+function drawSim() {
+  sim.clearRect(0, 0, 900, 300);
+  sim.fillStyle = "white";
+  sim.fillRect(430, 20, 40, 10);
+  const center = 150;
+  const scale = 300;
+  const yMass = center + (x - x_eq) * scale;
+  drawSpring(sim, 450, 30, 450, yMass);
+  sim.fillStyle = "red";
   sim.beginPath();
-  sim.arc(450, bottomY + 18, 18, 0, Math.PI*2);
+  sim.arc(450, yMass + 18, 18, 0, Math.PI * 2);
   sim.fill();
 }
 
-// ================= GRAPH =================
-function drawGraph(ctx,title,ylabel,data,color){
-  ctx.clearRect(0,0,900,220);
-
-  const L=80, T=40, H=130, W=780;
-  const mid=T+H/2;
-
-  ctx.strokeStyle="#555";
+function drawGraph(ctx, title, ylabel, data, color, centered = true) {
+  ctx.clearRect(0, 0, 900, 220);
+  const L = 80, T = 40, H = 130, W = 780;
+  const mid = T + H / 2;
+  ctx.strokeStyle = "#555";
   ctx.beginPath();
-  ctx.moveTo(L,T);
-  ctx.lineTo(L,T+H);
-  ctx.lineTo(L+W,T+H);
+  ctx.moveTo(L, T);
+  ctx.lineTo(L, T + H);
+  ctx.lineTo(L + W, T + H);
   ctx.stroke();
-
-  ctx.fillStyle="#00e5ff";
-  ctx.font="16px Arial";
-  ctx.fillText(title,L+10,25);
-
-  ctx.fillStyle="#aaa";
-  ctx.font="13px Arial";
-  ctx.fillText(ylabel,10,70);
-  ctx.fillText("Time (s)",830,205);
-
-  let max=Math.max(...data.map(d=>Math.abs(d))) || 1;
-  let scale=(H/2)/max*0.85;
-
-  // Y-axis ticks
-  ctx.fillStyle="#aaa";
-  for(let i=-2;i<=2;i++){
-    let y = mid - i*(H/4);
-    ctx.fillText((i*max/2).toFixed(3),30,y+4);
-    ctx.strokeStyle="#222";
+  ctx.fillStyle = "#00e5ff";
+  ctx.font = "16px Arial";
+  ctx.fillText(title, L + 10, 25);
+  ctx.fillStyle = "#aaa";
+  ctx.font = "13px Arial";
+  ctx.fillText(ylabel, 10, 70);
+  ctx.fillText("Time (s)", 820, 205);
+  let max = Math.max(...data.map(d => Math.abs(d))) || 1;
+  let scale = (H / 2) / max * 0.85;
+  ctx.fillStyle = "#aaa";
+  for (let i = -2; i <= 2; i++) {
+    let y = mid - i * (H / 4);
+    ctx.fillText((i * max / 2).toFixed(2), 30, y + 5);
+    ctx.strokeStyle = "#222";
     ctx.beginPath();
-    ctx.moveTo(L,y);
-    ctx.lineTo(L+W,y);
+    ctx.moveTo(L, y);
+    ctx.lineTo(L + W, y);
     ctx.stroke();
   }
-
-  ctx.strokeStyle=color;
-  ctx.lineWidth=2;
+  if (centered) {
+    ctx.strokeStyle = "#333";
+    ctx.beginPath();
+    ctx.moveTo(L, mid);
+    ctx.lineTo(L + W, mid);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  data.forEach((d,i)=>{
-    let xg=L+i*3;
-    let yg=mid-d*scale;
-    if(i===0) ctx.moveTo(xg,yg);
-    else ctx.lineTo(xg,yg);
+  data.forEach((d, i) => {
+    let xg = L + i * 3;
+    let yg = centered ? mid - d * scale : T + H - d * scale;
+    if (i === 0) ctx.moveTo(xg, yg);
+    else ctx.lineTo(xg, yg);
   });
   ctx.stroke();
 }
 
-// ================= UPDATE (VERLET) =================
-function step(){
-  const a = -k*(x-x_eq)/m;
-  x += v*dt + 0.5*a*dt*dt;
-  const a2 = -k*(x-x_eq)/m;
-  v += (a+a2)*dt;
+function step() {
+  x = x + v * dt + 0.5 * a * dt * dt;
+  let a_new = -(k / m) * (x - x_eq);
+  v = v + 0.5 * (a + a_new) * dt;
+  a = a_new;
+  t += dt;
 
-  X.push(x-x_eq);
-  V.push(v);
-  E.push(0.5*m*v*v + 0.5*k*(x-x_eq)**2);
+  let x_plot = A * Math.cos(omega * t + phi);
+  let v_plot = -A * omega * Math.sin(omega * t + phi);
 
-  if(X.length>250){X.shift();V.shift();E.shift();}
+  X.push(x_plot);
+  V.push(v_plot);
+  E.push(E0);
+
+  if (X.length > 250) {
+    X.shift();
+    V.shift();
+    E.shift();
+  }
 
   drawSim();
-  drawGraph(p,"Position vs Time","Displacement (m)",X,"#00e5ff");
-  drawGraph(vc,"Velocity vs Time","Velocity (m/s)",V,"#ff3333");
-  drawGraph(ec,"Total Energy vs Time","Energy (J)",E,"#00ff88");
+  drawGraph(p, "Position vs Time", "Displacement (m)", X, "#00e5ff");
+  drawGraph(vc, "Velocity vs Time", "Velocity (m/s)", V, "#ff3333");
+  drawGraph(ec, "Total Energy vs Time", "Energy (J)", E, "#00ff88", false);
 }
 
-// ================= CONTROL =================
-function start(){
-  if(!run){ run=true; timer=setInterval(step,20); }
+function start() {
+  if (!run) {
+    run = true;
+    timer = setInterval(step, 20);
+  }
 }
-function stop(){
-  run=false; clearInterval(timer);
+
+function stop() {
+  run = false;
+  clearInterval(timer);
 }
 
 drawSim();
@@ -183,5 +189,3 @@ drawSim();
 
 </body>
 </html>
-
-
