@@ -43,7 +43,7 @@ button {
 <canvas id="engC" width="900" height="220"></canvas>
 
 <script>
-// ================= PHYSICS CONSTANTS =================
+
 const m = 0.06;        // kg
 const k = 8;           // N/m
 const L0 = 0.20;       // m
@@ -60,17 +60,17 @@ let v = 0;
 // Total energy (constant – ideal system)
 const E0 = 0.5 * k * (x - x_eq) ** 2 + 0.5 * m * v * v;
 
-// ================= DATA STORAGE =================
+
 let X = [], V = [], E = [];
 let run = false, timer;
 
-// ================= CONTEXTS =================
+
 const sim = document.getElementById("sim").getContext("2d");
 const p   = document.getElementById("posC").getContext("2d");
 const vc  = document.getElementById("velC").getContext("2d");
 const ec  = document.getElementById("engC").getContext("2d");
 
-// ================= DRAW HELIX SPRING =================
+
 function drawSpring(ctx, x0, y0, x1, y1, coils = 18, radius = 10) {
   ctx.strokeStyle = "yellow";
   ctx.lineWidth = 3;
@@ -87,7 +87,7 @@ function drawSpring(ctx, x0, y0, x1, y1, coils = 18, radius = 10) {
   ctx.stroke();
 }
 
-// ================= SIMULATION DRAW =================
+
 function drawSim() {
   sim.clearRect(0, 0, 900, 300);
 
@@ -110,7 +110,7 @@ function drawSim() {
   sim.fill();
 }
 
-// ================= GRAPH DRAW =================
+
 function drawGraph(ctx, title, ylabel, data, color, centered = true) {
   ctx.clearRect(0, 0, 900, 220);
 
@@ -173,7 +173,7 @@ function drawGraph(ctx, title, ylabel, data, color, centered = true) {
   ctx.stroke();
 }
 
-// ================= UPDATE STEP =================
+
 function step() {
   const F = -k * (x - L0) + m * g;
   const a = F / m;
@@ -195,7 +195,7 @@ function step() {
   drawGraph(ec, "Total Energy vs Time", "Energy (J)",   E, "#00ff88", false);
 }
 
-// ================= CONTROLS =================
+
 function start() {
   if (!run) {
     run = true;
@@ -212,3 +212,4 @@ drawSim();
 
 </body>
 </html>
+
